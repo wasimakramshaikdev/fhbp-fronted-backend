@@ -7,7 +7,7 @@ export const HowItWorksPage = () => {
     <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-16 space-y-16">
       <div className="text-center space-y-4">
         <Badge variant="primary">Marketplace Architecture</Badge>
-        <h1 className="text-4xl font-extrabold text-slate-900">How HallBook Protects Your Event</h1>
+        <h1 className="text-4xl font-extrabold text-slate-900">How PotlaEventSpaces Protects Your Event</h1>
         <p className="text-slate-600 max-w-2xl mx-auto text-base">
           A transparent, double-booking immune booking system engineered for Indian banquet halls and convention centers.
         </p>

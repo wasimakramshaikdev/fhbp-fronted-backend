@@ -146,6 +146,11 @@ api.interceptors.request.use(
     const hasToken = Boolean(token);
     const tokenLen = token ? token.length : 0;
 
+    if (config.data instanceof FormData) {
+      delete config.headers['Content-Type'];
+      delete config.headers['content-type'];
+    }
+
     if (token) {
       config.headers = config.headers || {};
       if (typeof config.headers.set === 'function') {

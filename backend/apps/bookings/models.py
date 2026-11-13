@@ -1,3 +1,4 @@
+from django.db.models import Q
 import uuid
 import secrets
 from datetime import datetime, timezone
@@ -29,6 +30,18 @@ class BookingStatus(models.TextChoices):
     DISPUTED = 'DISPUTED', 'Disputed'
     REFUND_PENDING = 'REFUND_PENDING', 'Refund Pending'
     REFUNDED = 'REFUNDED', 'Refunded'
+
+
+ACTIVE_BLOCKING_STATUSES = [
+    BookingStatus.PENDING_OWNER_CONFIRMATION,
+    BookingStatus.CONFIRMED,
+    BookingStatus.COMPLETED,
+    ]
+
+BLOCKING_BOOKING_STATUSES = [
+    BookingStatus.PENDING_OWNER_CONFIRMATION,
+    BookingStatus.CONFIRMED,
+    ]
 
 
 class Booking(UUIDModel, TimeStampedModel):
@@ -112,7 +125,40 @@ class Booking(UUIDModel, TimeStampedModel):
                 condition=models.Q(total_amount__gte=0) & models.Q(advance_amount__gte=0) & models.Q(balance_amount__gte=0),
                 name='chk_booking_amounts_positive'
             ),
+
+
+            models.UniqueConstraint(
+               fields=['hall', 'event_date', 'time_slot'],
+               condition=Q(
+               status__in=[
+
+                BookingStatus.PENDING_OWNER_CONFIRMATION,
+                BookingStatus.CONFIRMED,
+
+              ]
+              ),
+            name='unique_active_booking_hall_date_slot',
+            ),
         ]
+
+        
+   
+    
+    @classmethod
+    def is_slot_available(cls, hall_id, event_date, time_slot):
+        """
+        Returns True if the hall/time slot is available.
+        """
+
+        blocking_booking_exists = cls.objects.filter(
+
+           hall_id=hall_id,
+           event_date=event_date,
+        #    time_slot=time_slot,
+           status__in=ACTIVE_BLOCKING_STATUSES,
+        ).exists()
+
+        return not blocking_booking_exists
 
     def save(self, *args, **kwargs):
         if not self.booking_number:

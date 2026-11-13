@@ -13,6 +13,7 @@ export const OwnerListingsPage = () => {
   const { showSuccess, showError } = useToast();
   const [halls, setHalls] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [submittingHallId, setSubmittingHallId] = useState(null);
 
   const fetchListings = async () => {
     try {
@@ -45,7 +46,9 @@ export const OwnerListingsPage = () => {
   };
 
   const handleReSubmit = async (id) => {
+    if (submittingHallId) return;
     try {
+      setSubmittingHallId(id);
       const res = await api.post(`/owner/listings/${id}/submit/`);
       if (res.success) {
         showSuccess('Listing re-submitted for Admin verification!');
@@ -53,6 +56,8 @@ export const OwnerListingsPage = () => {
       }
     } catch (err) {
       showError(err.message || 'Failed to submit listing');
+    } finally {
+      setSubmittingHallId(null);
     }
   };
 
@@ -175,8 +180,10 @@ export const OwnerListingsPage = () => {
                             variant="primary"
                             size="sm"
                             onClick={() => handleReSubmit(hall.id)}
+                            disabled={submittingHallId === hall.id}
+                            isLoading={submittingHallId === hall.id}
                           >
-                            Submit for Approval
+                            {submittingHallId === hall.id ? 'Submitting...' : 'Submit for Approval'}
                           </Button>
                         )}
                       </div>

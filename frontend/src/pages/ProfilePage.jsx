@@ -25,6 +25,8 @@ export const ProfilePage = () => {
   const [bankHolder, setBankHolder] = useState(user?.owner_profile?.bank_account_holder || '');
   const [bankNumber, setBankNumber] = useState('');
   const [bankIfsc, setBankIfsc] = useState(user?.owner_profile?.bank_ifsc_code || '');
+  const [idProofFile, setIdProofFile] = useState(null);
+  const [businessProofFile, setBusinessProofFile] = useState(null);
 
   const [loading, setLoading] = useState(false);
 
@@ -49,6 +51,7 @@ export const ProfilePage = () => {
     e.preventDefault();
     setLoading(true);
 
+    const hasKycFiles = !!idProofFile || !!businessProofFile;
     const payload = {
       full_name: fullName,
       phone,
@@ -69,14 +72,33 @@ export const ProfilePage = () => {
     }
 
     try {
-      const res = await api.patch('/auth/me/', payload);
+      let res;
+      if (hasKycFiles) {
+        const formData = new FormData();
+        Object.entries(payload).forEach(([key, value]) => {
+          if (value !== undefined && value !== null && value !== '') {
+            formData.append(key, value);
+          }
+        });
+        if (idProofFile) formData.append('id_proof', idProofFile);
+        if (businessProofFile) formData.append('business_proof', businessProofFile);
+
+        res = await api.patch('/auth/me/', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+      } else {
+        res = await api.patch('/auth/me/', payload);
+      }
+
       if (res.success) {
         login(res.data);
-        showSuccess('Profile updated successfully!');
+        showSuccess(hasKycFiles ? 'Profile and KYC documents updated successfully!' : 'Profile updated successfully!');
         setBankNumber('');
+        setIdProofFile(null);
+        setBusinessProofFile(null);
       }
     } catch (err) {
-      showError(err.message || 'Failed to update profile');
+      showError(err?.response?.data?.message || err.message || 'Failed to update profile');
     } finally {
       setLoading(false);
     }
@@ -94,7 +116,7 @@ export const ProfilePage = () => {
         <Card>
           <CardHeader>
             <CardTitle>Personal Information</CardTitle>
-            <CardDescription>Your identity details across HallBook</CardDescription>
+            <CardDescription>Your identity details across PotlaEventSpaces</CardDescription>
           </CardHeader>
           <CardBody className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -123,12 +145,28 @@ export const ProfilePage = () => {
               />
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1.5">Account Role</label>
-                <div className="flex items-center gap-2 pt-1.5">
+                <div className="flex items-center gap-2 pt-1.5 flex-wrap">
                   <Badge variant="primary">{user?.role}</Badge>
                   {user?.is_verified ? (
                     <Badge variant="success">Email Verified</Badge>
                   ) : (
                     <Badge variant="warning">Email Unverified</Badge>
+                  )}
+                  {user?.role === 'OWNER' && (
+                    <>
+                      {user?.owner_profile?.verification_status === 'VERIFIED' && (
+                        <Badge variant="success">Owner Verified</Badge>
+                      )}
+                      {user?.owner_profile?.verification_status === 'PENDING' && (
+                        <Badge variant="warning">Verification Pending</Badge>
+                      )}
+                      {user?.owner_profile?.verification_status === 'REJECTED' && (
+                        <Badge variant="danger">Verification Rejected</Badge>
+                      )}
+                      {user?.owner_profile?.verification_status === 'SUSPENDED' && (
+                        <Badge variant="danger">Verification Suspended</Badge>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -206,6 +244,33 @@ export const ProfilePage = () => {
                     onChange={(e) => setBankIfsc(e.target.value)}
                     placeholder="HDFC0001234"
                   />
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-slate-100 space-y-4">
+                <h4 className="text-sm font-semibold text-slate-900">KYC Documents</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <label className="block rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                    <span className="mb-2 block text-sm font-medium text-slate-700">ID proof</span>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      className="block w-full text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-indigo-700"
+                      onChange={(event) => setIdProofFile(event.target.files?.[0] || null)}
+                    />
+                    <span className="mt-2 block text-xs text-slate-500">{idProofFile ? idProofFile.name : 'Upload a valid government-issued ID'}</span>
+                  </label>
+
+                  <label className="block rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                    <span className="mb-2 block text-sm font-medium text-slate-700">Business proof</span>
+                    <input
+                      type="file"
+                      accept="image/*,.pdf"
+                      className="block w-full text-sm text-slate-600 file:mr-4 file:rounded-full file:border-0 file:bg-indigo-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-indigo-700"
+                      onChange={(event) => setBusinessProofFile(event.target.files?.[0] || null)}
+                    />
+                    <span className="mt-2 block text-xs text-slate-500">{businessProofFile ? businessProofFile.name : 'Upload GST or business registration proof'}</span>
+                  </label>
                 </div>
               </div>
             </CardBody>

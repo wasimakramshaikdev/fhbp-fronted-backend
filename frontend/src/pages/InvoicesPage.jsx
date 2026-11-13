@@ -231,7 +231,7 @@ export const InvoicesPage = () => {
 
             <div className="flex justify-between items-center pt-3 border-t border-slate-100">
               <span className="text-[10px] text-slate-400">
-                This is a computer-generated tax invoice issued by HallBook Technologies Pvt Ltd.
+                This is a computer-generated tax invoice issued by PotlaEventSpaces Technologies Pvt Ltd.
               </span>
               <div className="flex gap-2">
                 <Button variant="outline" size="sm" icon={Printer} onClick={() => window.print()}>

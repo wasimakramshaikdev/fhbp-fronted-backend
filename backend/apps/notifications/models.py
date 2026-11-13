@@ -9,6 +9,7 @@ class NotificationType(models.TextChoices):
     BOOKING_CONFIRMED = 'BOOKING_CONFIRMED', 'Booking Confirmed'
     BOOKING_REJECTED = 'BOOKING_REJECTED', 'Booking Declined'
     BOOKING_CANCELLED = 'BOOKING_CANCELLED', 'Booking Cancelled'
+    REFUND_PROCESSED = 'REFUND_PROCESSED', 'Refund Processed'
     PAYMENT_SUCCESS = 'PAYMENT_SUCCESS', 'Payment Received'
     BALANCE_DUE = 'BALANCE_DUE', 'Balance Payment Reminder'
     EVENT_REMINDER = 'EVENT_REMINDER', 'Upcoming Event Reminder'

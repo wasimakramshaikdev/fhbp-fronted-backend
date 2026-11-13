@@ -4,6 +4,7 @@ import { Building2, User as UserIcon, Heart, Calendar, LogOut, ShieldCheck, Menu
 import api, { getStoredAccessToken } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../ui/Button';
+import logoImage from '../../assets/logo.jpeg';
 
 export const Navbar = () => {
   const { user, logout, isCustomer, isOwner, isAdmin } = useAuth();
@@ -73,45 +74,40 @@ export const Navbar = () => {
         <div className="flex items-center justify-between h-18">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2.5 group">
-            <div className="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-white shadow-md shadow-indigo-600/20 group-hover:bg-indigo-700 transition">
-              <Building2 className="w-6 h-6" />
-            </div>
-            <div className="flex flex-col">
-              <span className="text-xl font-black tracking-tight text-slate-900 leading-none">
-                HALL<span className="text-indigo-600">BOOK</span>
+            <img
+              src={logoImage}
+              alt="PotlaEventSpaces logo"
+              className="h-11 w-11 rounded-full object-cover shadow-md shadow-fuchsia-500/20 ring-2 ring-fuchsia-100"
+            />
+            <div className="flex flex-col leading-none">
+              <span className="text-[0.72rem] font-semibold tracking-[0.28em] text-slate-400 uppercase">
+                Potla
               </span>
-              <span className="text-[10px] font-medium text-slate-400 tracking-wider uppercase mt-0.5">
-                Function Hall Marketplace
+              <span className="text-lg font-black tracking-[-0.04em] text-slate-900">
+                Event<span className="text-indigo-600">Spaces</span>
               </span>
             </div>
           </Link>
 
           {/* Desktop Navigation */}
-          <nav className="hidden md:flex items-center gap-8">
-            <Link
-              to="/search"
-              className={`text-sm font-medium transition ${
-                location.pathname === '/search' ? 'text-indigo-600 font-semibold' : 'text-slate-600 hover:text-slate-900'
-              }`}
-            >
-              Browse Halls
-            </Link>
-            <Link
-              to="/how-it-works"
-              className="text-sm font-medium text-slate-600 hover:text-slate-900 transition"
-            >
-              How It Works
-            </Link>
-            <Link
-              to={user && isOwner ? "/owner/listings" : "/owner/onboarding"}
-              className="text-sm font-medium text-indigo-600 hover:text-indigo-700 transition flex items-center gap-1.5"
-            >
-              <span>List Your Hall</span>
-              <span className="px-2 py-0.5 text-[10px] font-bold bg-indigo-50 text-indigo-700 rounded-full border border-indigo-200">
-                Partner
-              </span>
-            </Link>
-          </nav>
+          {!isOwner && !isAdmin && (
+            <nav className="hidden md:flex items-center gap-8">
+              <Link
+                to="/search"
+                className={`text-sm font-medium transition ${
+                  location.pathname === '/search' ? 'text-indigo-600 font-semibold' : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                Browse Halls
+              </Link>
+              <Link
+                to="/how-it-works"
+                className="text-sm font-medium text-slate-600 hover:text-slate-900 transition"
+              >
+                How It Works
+              </Link>
+            </nav>
+          )}
 
           {/* User / Auth Controls */}
           <div className="hidden md:flex items-center gap-4">
@@ -278,27 +274,24 @@ export const Navbar = () => {
       {/* Mobile drawer */}
       {mobileMenuOpen && (
         <div className="md:hidden bg-white border-b border-slate-200 px-4 pt-2 pb-6 space-y-3">
-          <Link
-            to="/search"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-xl text-base font-medium text-slate-700 hover:bg-slate-50"
-          >
-            Browse Halls
-          </Link>
-          <Link
-            to="/how-it-works"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-xl text-base font-medium text-slate-700 hover:bg-slate-50"
-          >
-            How It Works
-          </Link>
-          <Link
-            to="/owner/onboarding"
-            onClick={() => setMobileMenuOpen(false)}
-            className="block px-3 py-2 rounded-xl text-base font-medium text-indigo-600 bg-indigo-50"
-          >
-            List Your Hall
-          </Link>
+          {!isOwner && !isAdmin && (
+            <>
+              <Link
+                to="/search"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2 rounded-xl text-base font-medium text-slate-700 hover:bg-slate-50"
+              >
+                Browse Halls
+              </Link>
+              <Link
+                to="/how-it-works"
+                onClick={() => setMobileMenuOpen(false)}
+                className="block px-3 py-2 rounded-xl text-base font-medium text-slate-700 hover:bg-slate-50"
+              >
+                How It Works
+              </Link>
+            </>
+          )}
           <div className="border-t border-slate-100 pt-3">
             {user ? (
               <div className="space-y-2">

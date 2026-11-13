@@ -13,7 +13,7 @@ export const BookingStatusBadge = ({ status }) => {
     CANCELLED_BY_ADMIN: { label: 'Cancelled by Admin', variant: 'danger' },
     DISPUTED: { label: 'Disputed', variant: 'warning' },
     REFUND_PENDING: { label: 'Refund Pending', variant: 'warning' },
-    REFUNDED: { label: 'Refunded', variant: 'default' },
+    REFUNDED: { label: 'Refunded', variant: 'warning' },
   };
 
   const config = statusConfig[status] || { label: status || 'Unknown', variant: 'default' };

@@ -19,7 +19,14 @@ export const SavedHallsPage = () => {
       setLoading(true);
       const res = await api.get('/favorites/');
       if (res.success) {
-        setFavorites(res.data);
+        const favoriteList = Array.isArray(res.data)
+          ? res.data
+          : Array.isArray(res.data?.data)
+            ? res.data.data
+            : Array.isArray(res.data?.results)
+              ? res.data.results
+              : [];
+        setFavorites(favoriteList);
       }
     } catch (err) {
       showError('Failed to load saved venues');
@@ -36,8 +43,10 @@ export const SavedHallsPage = () => {
     try {
       const res = await api.post(`/favorites/${hallId}/toggle/`);
       if (res.success) {
-        showSuccess(`Removed '${hallName}' from saved venues`);
-        setFavorites((prev) => prev.filter((f) => f.hall.id !== hallId));
+        showSuccess(res.message || `Removed '${hallName}' from saved venues`);
+        setFavorites((prev) => prev.filter((f) => f.hall?.id !== hallId));
+      } else {
+        showError(res.message || 'Failed to remove from saved venues');
       }
     } catch (err) {
       showError('Failed to remove from saved venues');

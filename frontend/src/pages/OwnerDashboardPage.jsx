@@ -2,15 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { LayoutDashboard, CalendarCheck, CalendarDays, IndianRupee, Star, Building2, Plus, ArrowRight, Clock, Users, ShieldCheck } from 'lucide-react';
 import api from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { Button } from '../components/ui/Button';
-import { Card, CardHeader, CardTitle, CardBody } from '../components/ui/Card';
+// import { Card, CardHeader, CardTitle, CardBody } from '../components/ui/Card';
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardBody
+} from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Table, TableHead, TableBody, TableRow, TableHeaderCell, TableCell } from '../components/ui/Table';
 import { Spinner } from '../components/ui/Feedback';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
 export const OwnerDashboardPage = () => {
+  const { user } = useAuth();
   const { showError } = useToast();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -42,13 +51,20 @@ export const OwnerDashboardPage = () => {
 
   const metrics = data.metrics;
   const upcoming = data.upcoming_events;
+  const verificationStatus = user?.owner_profile?.verification_status || 'PENDING';
+  const verificationLabel = {
+    PENDING: 'Verification pending',
+    VERIFIED: 'Verified owner',
+    REJECTED: 'Verification rejected',
+    SUSPENDED: 'Account suspended',
+  }[verificationStatus] || 'Verification pending';
 
   return (
     <div className="space-y-8">
       {/* Welcome Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-[26px] border border-indigo-100 bg-gradient-to-r from-indigo-50 via-white to-violet-50 p-5 shadow-[0_12px_35px_rgba(99,102,241,0.08)]">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900">Venue Host Overview</h1>
+          <h1 className="text-2xl font-black tracking-tight text-slate-900">Venue Host Overview</h1>
           <p className="text-sm text-slate-500 mt-1">Real-time status of your bookings, venue revenue, and guest reviews</p>
         </div>
         <div className="flex gap-2">
@@ -65,9 +81,24 @@ export const OwnerDashboardPage = () => {
         </div>
       </div>
 
+      <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 via-white to-orange-50 p-4 shadow-[0_10px_25px_rgba(251,191,36,0.08)]">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-amber-700">Owner verification</p>
+            <h2 className="mt-1 text-lg font-bold text-slate-900">{verificationLabel}</h2>
+          </div>
+          <Badge variant={verificationStatus === 'VERIFIED' ? 'success' : verificationStatus === 'PENDING' ? 'warning' : 'danger'}>
+            {verificationStatus}
+          </Badge>
+        </div>
+        <Link to="/owner/verification" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:underline">
+          View KYC & verification status <ArrowRight className="w-3 h-3" />
+        </Link>
+      </div>
+
       {/* Wireframe Metric Cards (Screen 5) */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-        <Card className="p-5 border-slate-200 shadow-xs space-y-2">
+        <Card className="p-5 border-slate-200 shadow-[0_12px_28px_rgba(15,23,42,0.04)] space-y-2 bg-gradient-to-br from-white to-indigo-50/50">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-xs font-bold uppercase tracking-wider">Pending Requests</span>
             <Clock className="w-4 h-4 text-amber-500" />
@@ -79,7 +110,7 @@ export const OwnerDashboardPage = () => {
           </Link>
         </Card>
 
-        <Card className="p-5 border-slate-200 shadow-xs space-y-2">
+        <Card className="p-5 border-slate-200 shadow-[0_12px_28px_rgba(15,23,42,0.04)] space-y-2 bg-gradient-to-br from-white to-emerald-50/60">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-xs font-bold uppercase tracking-wider">Confirmed (MTD)</span>
             <CalendarCheck className="w-4 h-4 text-emerald-500" />
@@ -88,7 +119,7 @@ export const OwnerDashboardPage = () => {
           <span className="text-xs text-slate-400">Bookings this month</span>
         </Card>
 
-        <Card className="p-5 border-slate-200 shadow-xs space-y-2">
+        <Card className="p-5 border-slate-200 shadow-[0_12px_28px_rgba(15,23,42,0.04)] space-y-2 bg-gradient-to-br from-white to-violet-50/60">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-xs font-bold uppercase tracking-wider">Revenue (MTD)</span>
             <IndianRupee className="w-4 h-4 text-indigo-600" />
@@ -100,7 +131,7 @@ export const OwnerDashboardPage = () => {
           </Link>
         </Card>
 
-        <Card className="p-5 border-slate-200 shadow-xs space-y-2">
+        <Card className="p-5 border-slate-200 shadow-[0_12px_28px_rgba(15,23,42,0.04)] space-y-2 bg-gradient-to-br from-white to-amber-50/60">
           <div className="flex items-center justify-between text-slate-500">
             <span className="text-xs font-bold uppercase tracking-wider">Avg. Rating</span>
             <Star className="w-4 h-4 text-amber-500 fill-amber-500" />

@@ -80,8 +80,8 @@ export const AdminDisputesPage = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-white">Bookings & Dispute Resolution</h1>
-        <p className="text-sm text-slate-400 mt-1">Review customer dispute evidence, adjudicate conflicting claims, and execute escrow refunds</p>
+        <h1 className="text-2xl font-bold text-slate-900">Bookings & Dispute Resolution</h1>
+        <p className="text-sm text-slate-500 mt-1">Review customer dispute evidence, adjudicate conflicting claims, and execute escrow refunds</p>
       </div>
 
       {loading ? (
@@ -95,16 +95,16 @@ export const AdminDisputesPage = () => {
           description="There are currently zero active dispute tickets or refund claims lodged across the platform."
         />
       ) : (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-[0_10px_25px_rgba(15,23,42,0.04)]">
           <Table>
             <TableHead>
-              <TableRow className="border-slate-800 bg-slate-800/60">
-                <TableHeaderCell className="text-slate-300">Booking ID & Venue</TableHeaderCell>
-                <TableHeaderCell className="text-slate-300">Customer & Claim</TableHeaderCell>
-                <TableHeaderCell className="text-slate-300">Amount Paid</TableHeaderCell>
-                <TableHeaderCell className="text-slate-300">Status</TableHeaderCell>
-                <TableHeaderCell className="text-slate-300">Lodged Date</TableHeaderCell>
-                <TableHeaderCell className="text-slate-300 text-right">Action</TableHeaderCell>
+              <TableRow className="border-slate-200 bg-slate-50">
+                <TableHeaderCell className="text-slate-600">Booking ID & Venue</TableHeaderCell>
+                <TableHeaderCell className="text-slate-600">Customer & Claim</TableHeaderCell>
+                <TableHeaderCell className="text-slate-600">Amount Paid</TableHeaderCell>
+                <TableHeaderCell className="text-slate-600">Status</TableHeaderCell>
+                <TableHeaderCell className="text-slate-600">Lodged Date</TableHeaderCell>
+                <TableHeaderCell className="text-slate-600 text-right">Action</TableHeaderCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -112,24 +112,24 @@ export const AdminDisputesPage = () => {
                 const isOpen = disp.status === 'OPEN' || disp.status === 'UNDER_REVIEW';
 
                 return (
-                  <TableRow key={disp.id} className="border-slate-800 hover:bg-slate-800/40">
+                  <TableRow key={disp.id} className="border-slate-200 hover:bg-slate-50">
                     <TableCell>
-                      <div className="font-bold text-white text-sm">#{disp.booking_number}</div>
-                      <div className="text-xs text-slate-400">{disp.hall_name}</div>
+                      <div className="font-bold text-slate-900 text-sm">#{disp.booking_number}</div>
+                      <div className="text-xs text-slate-500">{disp.hall_name}</div>
                     </TableCell>
                     <TableCell>
-                      <div className="text-xs font-semibold text-slate-200">{disp.customer_name}</div>
-                      <div className="text-xs text-amber-400 font-medium">{disp.reason}</div>
+                      <div className="text-xs font-semibold text-slate-700">{disp.customer_name}</div>
+                      <div className="text-xs text-amber-600 font-medium">{disp.reason}</div>
                     </TableCell>
                     <TableCell>
-                      <div className="text-sm font-bold text-slate-200">{formatCurrency(disp.amount_paid)}</div>
+                      <div className="text-sm font-bold text-slate-900">{formatCurrency(disp.amount_paid)}</div>
                     </TableCell>
                     <TableCell>
                       <Badge variant={isOpen ? 'warning' : 'success'} size="sm">
                         {disp.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-xs text-slate-400">
+                    <TableCell className="text-xs text-slate-500">
                       {formatDate(disp.created_at)}
                     </TableCell>
                     <TableCell className="text-right">

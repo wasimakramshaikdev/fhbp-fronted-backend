@@ -92,6 +92,56 @@ class AuthIntegrationTests(TestCase):
         }, format='json')
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
         self.assertFalse(response.data['success'])
+        self.assertEqual(response.data['message'], 'Invalid password.')
+
+    def test_user_login_fails_with_unknown_email(self):
+        response = self.client.post('/api/v1/auth/login/', {
+            "email": "missing@example.com",
+            "password": "WrongPassword!"
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertFalse(response.data['success'])
+        self.assertEqual(response.data['message'], 'Invalid email address.')
+
+    def test_duplicate_email_registration_returns_specific_message(self):
+        User.objects.create_user(
+            email='duplicate@example.com',
+            password='SecurePassword123!',
+            full_name='Existing User',
+            phone='+919900000001',
+        )
+
+        response = self.client.post('/api/v1/auth/register/', {
+            'full_name': 'New User',
+            'email': 'duplicate@example.com',
+            'phone': '+919900000002',
+            'password': 'SecurePassword123!',
+            'confirm_password': 'SecurePassword123!',
+            'role': 'CUSTOMER',
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['message'], 'An account with this email address already exists.')
+
+    def test_duplicate_phone_registration_returns_specific_message(self):
+        User.objects.create_user(
+            email='newuser@example.com',
+            password='SecurePassword123!',
+            full_name='Existing User',
+            phone='+919900000099',
+        )
+
+        response = self.client.post('/api/v1/auth/register/', {
+            'full_name': 'Another User',
+            'email': 'another@example.com',
+            'phone': '+919900000099',
+            'password': 'SecurePassword123!',
+            'confirm_password': 'SecurePassword123!',
+            'role': 'CUSTOMER',
+        }, format='json')
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(response.data['message'], 'An account with this phone number already exists.')
 
     def test_deactivated_user_cannot_login(self):
         User.objects.create_user(

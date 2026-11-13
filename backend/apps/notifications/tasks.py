@@ -2,7 +2,7 @@ import logging
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from celery import shared_task
-from django.core.mail import send_mail
+from django.core.mail import send_mail, get_connection
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from apps.notifications.models import Notification, NotificationType
@@ -29,9 +29,23 @@ def send_email_notification_task(self, recipient_email: str, subject: str, body:
         return True
     except Exception as exc:
         logger.error(f"Failed to send email to {recipient_email}: {exc}", exc_info=True)
-        # Exponential backoff: 30s, 60s, 120s, 240s...
-        countdown = 30 * (2 ** self.request.retries)
-        raise self.retry(exc=exc, countdown=countdown)
+        try:
+            console_backend = get_connection('django.core.mail.backends.console.EmailBackend')
+            console_backend.send_messages([
+                __import__('django.core.mail').core.mail.EmailMessage(
+                    subject=subject,
+                    body=body,
+                    from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', 'HallBook <no-reply@hallbook.local>'),
+                    to=[recipient_email],
+                    connection=console_backend,
+                )
+            ])
+            logger.info(f"Fallback console email dispatched for '{subject}' to {recipient_email}")
+            return True
+        except Exception as fallback_exc:
+            logger.error(f"Fallback console email also failed for {recipient_email}: {fallback_exc}", exc_info=True)
+            countdown = 30 * (2 ** self.request.retries)
+            raise self.retry(exc=exc, countdown=countdown)
 
 
 @shared_task
@@ -75,19 +89,25 @@ def send_balance_reminders():
         balance = b.total_amount - b.amount_paid
         if balance > Decimal('0.00'):
             # Send in-app notification
-            send_in_app_notification_task.delay(
-                user_id=str(b.customer.id),
-                title="Balance Payment Reminder",
-                message=f"Your upcoming event at {b.hall.name} is on {b.event_date}. Please pay the remaining balance of ₹{balance}.",
-                notification_type=NotificationType.BALANCE_DUE,
-                related_entity_type="Booking",
-                related_entity_id=str(b.id)
+            send_in_app_notification_task.apply_async(
+                kwargs={
+                    'user_id': str(b.customer.id),
+                    'title': 'Balance Payment Reminder',
+                    'message': f"Your upcoming event at {b.hall.name} is on {b.event_date}. Please pay the remaining balance of ₹{balance}.",
+                    'notification_type': NotificationType.BALANCE_DUE,
+                    'related_entity_type': 'Booking',
+                    'related_entity_id': str(b.id),
+                },
+                queue='emails',
             )
             # Send Email
-            send_email_notification_task.delay(
-                recipient_email=b.customer.email,
-                subject=f"Balance Due Reminder: #{b.booking_number} for {b.hall.name}",
-                body=f"Dear {b.contact_name},\n\nYour event at {b.hall.name} is scheduled for {b.event_date}.\nOutstanding balance: ₹{balance}.\nPlease settle your balance prior to the event.\n\nHallBook Team"
+            send_email_notification_task.apply_async(
+                kwargs={
+                    'recipient_email': b.customer.email,
+                    'subject': f"Balance Due Reminder: #{b.booking_number} for {b.hall.name}",
+                    'body': f"Dear {b.contact_name},\n\nYour event at {b.hall.name} is scheduled for {b.event_date}.\nOutstanding balance: ₹{balance}.\nPlease settle your balance prior to the event.\n\nHallBook Team",
+                },
+                queue='emails',
             )
             reminded_count += 1
 

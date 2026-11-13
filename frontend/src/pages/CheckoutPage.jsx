@@ -12,6 +12,20 @@ import { Badge } from '../components/ui/Badge';
 import { PriceBreakdown } from '../components/ui/PriceBreakdown';
 import { formatCurrency, formatDate } from '../utils/formatters';
 
+const getLocalISODate = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+};
+
+const getMinBookingDate = () => {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  return getLocalISODate(date);
+};
+
 export const CheckoutPage = () => {
   const { slug } = useParams();
   const location = useLocation();
@@ -27,10 +41,11 @@ export const CheckoutPage = () => {
   const [bookingResult, setBookingResult] = useState(null);
 
   // Form State
-  const [eventType, setEventType] = useState(stateData.eventType || 'WEDDING');
-  const [eventDate, setEventDate] = useState(stateData.eventDate || '2026-08-18');
+  const [eventDate, setEventDate] = useState(stateData.eventDate || getMinBookingDate());
   const [timeSlot, setTimeSlot] = useState(stateData.timeSlot || 'EVENING');
   const [guestCount, setGuestCount] = useState(stateData.guestCount || 300);
+  const [guestError, setGuestError] = useState('');
+  const [eventDateError, setEventDateError] = useState('');
   const [contactName, setContactName] = useState(user?.full_name || '');
   const [contactPhone, setContactPhone] = useState(user?.phone || '');
   const [specialRequests, setSpecialRequests] = useState('');
@@ -93,6 +108,36 @@ export const CheckoutPage = () => {
   const advanceAmount = totalAmount * (advancePercentage / 100);
   const balanceAmount = totalAmount - advanceAmount;
 
+  const validateGuestCount = (value) => {
+    if (Number.isNaN(Number(value))) {
+      return 'Please enter a valid guest count.';
+    }
+
+    if (value < hall.min_capacity || value > hall.max_capacity) {
+      return `Guest count must be between ${hall.min_capacity} and ${hall.max_capacity}.`;
+    }
+
+    return '';
+  };
+
+  const validateEventDateInput = (value) => {
+    if (!value) {
+      return 'Please select an event date.';
+    }
+
+    const today = getLocalISODate(new Date());
+    if (value < today) {
+      return 'Event date cannot be in the past.';
+    }
+
+    const minimumBookingDate = getMinBookingDate();
+    if (value < minimumBookingDate) {
+      return 'Bookings must be made at least 1 day in advance.';
+    }
+
+    return '';
+  };
+
   const handleCreateIntent = async (e) => {
     e.preventDefault();
     const tokenInStorage = getStoredAccessToken();
@@ -108,11 +153,26 @@ export const CheckoutPage = () => {
       return;
     }
 
+    const nextGuestError = validateGuestCount(Number(guestCount));
+    if (nextGuestError) {
+      setGuestError(nextGuestError);
+      showError(nextGuestError);
+      return;
+    }
+    setGuestError('');
+
+    const nextEventDateError = validateEventDateInput(eventDate);
+    if (nextEventDateError) {
+      setEventDateError(nextEventDateError);
+      showError(nextEventDateError);
+      return;
+    }
+    setEventDateError('');
+
     setLoading(true);
     try {
       const payload = {
         hall_id: hall.id,
-        event_type: eventType,
         event_date: eventDate,
         time_slot: timeSlot,
         guest_count: guestCount,
@@ -131,8 +191,22 @@ export const CheckoutPage = () => {
         setStep(2);
         showSuccess('Slot temporarily locked for 15 minutes! Please complete advance payment.');
       }
+    // } catch (err) {
+    //   showError(err.message || 'Failed to hold booking slot. The slot may have just been reserved.');
+    // } finally {
     } catch (err) {
-      showError(err.message || 'Failed to hold booking slot. The slot may have just been reserved.');
+      console.log('[BOOKING ERROR FULL]', err);
+      console.log('[BOOKING ERROR JSON]', JSON.stringify(err, null, 2));
+
+      const apiErrors = err?.errors || err?.error?.errors || {};
+      const eventDateError =
+        apiErrors.event_date?.[0] ||
+        apiErrors.eventDate?.[0] ||
+        apiErrors.non_field_errors?.[0] ||
+        err?.message ||
+        'Failed to hold booking slot. The slot may have just been reserved.';
+
+      showError(eventDateError);
     } finally {
       setLoading(false);
     }
@@ -200,7 +274,7 @@ export const CheckoutPage = () => {
           key: orderData.key_id,
           amount: orderData.amount_subunits || Math.round(orderData.amount * 100),
           currency: orderData.currency || 'INR',
-          name: 'HallBook',
+          name: 'PotlaEventSpaces',
           description: `Advance Deposit for Booking #${bookingResult.booking_number}`,
           image: '/favicon.svg',
           order_id: orderData.gateway_order_id || orderData.order_id,
@@ -260,11 +334,11 @@ export const CheckoutPage = () => {
     <div className="max-w-4xl mx-auto py-10 px-4 sm:px-6 lg:px-8 space-y-8">
       {/* Checkout Progress Stepper */}
       <div className="text-center space-y-2">
-        <h1 className="text-3xl font-extrabold text-slate-900">Book & Confirm Venue</h1>
+        <h1 className="text-3xl font-extrabold tracking-tight text-slate-900">Book & Confirm Venue</h1>
         <p className="text-sm text-slate-500">{hall.name} — {hall.locality}, {hall.city}</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-3 bg-white p-3 rounded-2xl border border-slate-200 shadow-xs">
+      <div className="grid grid-cols-3 gap-3 rounded-[26px] border border-slate-200 bg-white/90 p-3 shadow-[0_12px_28px_rgba(15,23,42,0.05)] backdrop-blur-sm">
         {[
           { step: 1, title: '1. Event Details' },
           { step: 2, title: '2. Payment' },
@@ -288,7 +362,7 @@ export const CheckoutPage = () => {
       {/* STEP 1: Details */}
       {step === 1 && (
         <form onSubmit={handleCreateIntent} className="space-y-6">
-          <Card>
+          <Card className="overflow-hidden border-slate-200 shadow-[0_18px_38px_rgba(15,23,42,0.06)]">
             <CardHeader>
               <CardTitle>1. Event & Contact Details</CardTitle>
               <CardDescription>Confirm your dates, expected guests, and point-of-contact info</CardDescription>
@@ -312,21 +386,7 @@ export const CheckoutPage = () => {
                 />
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <Select
-                  label="Event Type"
-                  value={eventType}
-                  onChange={(e) => setEventType(e.target.value)}
-                >
-                  <option value="WEDDING">Wedding</option>
-                  <option value="RECEPTION">Reception</option>
-                  <option value="ENGAGEMENT">Engagement</option>
-                  <option value="BIRTHDAY">Birthday Party</option>
-                  <option value="CORPORATE">Corporate Event</option>
-                  <option value="ANNIVERSARY">Anniversary</option>
-                  <option value="OTHER">Other Celebration</option>
-                </Select>
-
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Input
                   label="Event Date"
                   type="date"
@@ -342,8 +402,15 @@ export const CheckoutPage = () => {
                   max={hall.max_capacity}
                   required
                   value={guestCount}
-                  onChange={(e) => setGuestCount(parseInt(e.target.value) || hall.min_capacity)}
+                  onChange={(e) => {
+                    const value = Number(e.target.value);
+                    setGuestCount(e.target.value === '' ? '' : value);
+                    setGuestError(validateGuestCount(e.target.value === '' ? 0 : value));
+                  }}
                 />
+                {guestError && (
+                  <p className="mt-2 text-xs font-medium text-rose-600">{guestError}</p>
+                )}
               </div>
 
               {/* Time Slot */}
@@ -441,6 +508,16 @@ export const CheckoutPage = () => {
                 />
               </div>
 
+              <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+                <p className="font-bold uppercase tracking-wider text-amber-800">Cancellation & refund notice</p>
+                <ul className="mt-3 space-y-2 text-sm leading-6">
+                  <li>• More than 90 days before event: 95% refund, less processing fee.</li>
+                  <li>• 30 to 90 days before event: 50% refund.</li>
+                  <li>• Less than 30 days before event: 0% refund.</li>
+                  <li>• The initial advance is non-refundable once paid, and one reschedule request is allowed up to 60 days before the event when available.</li>
+                </ul>
+              </div>
+
               {/* Price Breakdown Component */}
               <PriceBreakdown
                 hallRent={rent}
@@ -515,8 +592,8 @@ export const CheckoutPage = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {[
                     { id: 'UPI', label: 'UPI / QR Code', icon: QrCode, desc: 'GooglePay, PhonePe, Paytm' },
-                    { id: 'CARD', label: 'Credit / Debit Card', icon: CreditCard, desc: 'Visa, MasterCard, RuPay' },
-                    { id: 'NETBANKING', label: 'Net Banking', icon: Landmark, desc: 'All Major Indian Banks' },
+                    { id: 'CREDIT_CARD', label: 'Credit / Debit Card', icon: CreditCard, desc: 'Visa, MasterCard, RuPay' },
+                    { id: 'NET_BANKING', label: 'Net Banking', icon: Landmark, desc: 'All Major Indian Banks' },
                   ].map((m) => {
                     const Icon = m.icon;
                     return (

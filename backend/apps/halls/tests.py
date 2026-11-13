@@ -2,7 +2,7 @@ from django.test import TestCase
 from django.core.cache import cache
 from rest_framework.test import APIClient
 from rest_framework import status
-from apps.accounts.models import User, UserRole, OwnerProfile
+from apps.accounts.models import User, UserRole, OwnerProfile, OwnerVerificationStatus
 from apps.accounts.authentication import JWTTokenService
 from apps.halls.models import Hall, HallImage, Amenity, HallApprovalStatus, HallStatus, HallType
 
@@ -85,6 +85,52 @@ class HallDomainTests(TestCase):
         self.assertEqual(res.data['data']['approval_status'], "DRAFT")
         self.assertEqual(len(res.data['data']['images']), 2)
         self.assertEqual(len(res.data['data']['amenities']), 2)
+
+    def test_unverified_owner_cannot_create_or_submit_hall(self):
+        profile = self.owner_a.owner_profile
+        profile.verification_status = OwnerVerificationStatus.PENDING
+        profile.save(update_fields=['verification_status'])
+
+        payload = {
+            "name": "Pending KYC Hall",
+            "description": "Should not be allowed before verification.",
+            "address_line1": "Road 24",
+            "city": "Hyderabad",
+            "locality": "Madhapur",
+            "min_capacity": 100,
+            "max_capacity": 300,
+            "hall_type": "AC",
+            "base_price_morning": "25000.00",
+            "base_price_evening": "40000.00",
+            "base_price_full_day": "60000.00",
+            "advance_percentage": "20.00",
+            "catering_policy": "BOTH",
+            "veg_plate_price": "500.00",
+            "non_veg_plate_price": "700.00",
+            "decor_price": "12000.00",
+            "dj_price": "8000.00",
+            "amenity_ids": [],
+            "initial_images": ["https://example.com/1.jpg"]
+        }
+
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {self.owner_a_token}")
+        create_res = self.client.post('/api/v1/owner/listings/', payload, format='json')
+        self.assertEqual(create_res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('verification', create_res.data['message'].lower())
+
+        hall = Hall.objects.create(
+            owner=self.owner_a,
+            name="Attempted Submission Hall",
+            address_line1="Road 25",
+            city="Hyderabad",
+            locality="Madhapur",
+            approval_status=HallApprovalStatus.DRAFT,
+            status=HallStatus.ACTIVE,
+        )
+
+        submit_res = self.client.post(f'/api/v1/owner/listings/{hall.id}/submit/')
+        self.assertEqual(submit_res.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertIn('verification', submit_res.data['message'].lower())
 
     def test_unapproved_hall_not_visible_publicly(self):
         # Create draft hall for Owner A

@@ -6,8 +6,10 @@ from apps.core.services.audit import AuditService
 from apps.halls.models import Hall, HallApprovalStatus, HallStatus, CancellationPolicy
 from apps.availability.models import TimeSlot
 from apps.availability.services.availability import AvailabilityService, AvailabilityConflictError
-from apps.bookings.models import Booking, BookingStatus
+from apps.bookings.models import Booking, BookingStatus, EventType
 from apps.bookings.services.pricing import PricingService
+from apps.payments.models import PaymentStatus
+from apps.payments.services.payment import PaymentService
 
 class BookingValidationError(Exception):
     pass
@@ -18,7 +20,6 @@ class BookingService:
         cls,
         customer,
         hall: Hall,
-        event_type: str,
         event_date,
         time_slot: str,
         guest_count: int,
@@ -29,6 +30,7 @@ class BookingService:
         catering_type: str = 'VEG',
         has_decor: bool = False,
         has_dj: bool = False,
+        event_type: str = EventType.WEDDING,
     ) -> Booking:
         """
         Creates a new booking intent in atomic transaction with pessimistic availability locking.
@@ -233,6 +235,41 @@ class BookingService:
             return locked_booking
 
     @classmethod
+    def process_booking_refund(cls, booking: Booking, actor, reason: str = "", amount: Decimal = None) -> Booking:
+        """Processes a real payment refund for a cancelled booking when the owner/admin approves it."""
+        with transaction.atomic():
+            locked_booking = Booking.objects.select_for_update().get(id=booking.id)
+            is_owner = locked_booking.hall.owner == actor
+            is_admin = getattr(actor, 'is_admin', False)
+
+            if not (is_owner or is_admin):
+                raise BookingValidationError("Only the hall owner or an admin can refund this booking.")
+
+            if is_owner and locked_booking.status == BookingStatus.CANCELLED_BY_CUSTOMER:
+                deadline = locked_booking.updated_at + timedelta(hours=24)
+                if datetime.now(timezone.utc) > deadline:
+                    raise BookingValidationError("Refunds for customer cancellations must be processed within 24 hours.")
+
+            successful_payment = locked_booking.payments.filter(status=PaymentStatus.SUCCESS).order_by('-paid_at').first()
+            if not successful_payment:
+                raise BookingValidationError("No successful payment exists to refund for this booking.")
+
+            refund_amount = amount or locked_booking.refund_amount or successful_payment.amount
+            refund_amount = PricingService.quantize(refund_amount)
+            if refund_amount <= Decimal('0.00'):
+                raise BookingValidationError("Refund amount must be greater than zero.")
+
+            PaymentService.execute_refund(
+                payment_id=str(successful_payment.id),
+                amount=refund_amount,
+                reason=reason or "Refund processed for booking cancellation.",
+                actor=actor,
+            )
+
+            locked_booking.refresh_from_db()
+            return locked_booking
+
+    @classmethod
     def cancel_booking(cls, booking: Booking, actor, reason: str = "") -> Booking:
         """Handles cancellation by customer or owner."""
         with transaction.atomic():
@@ -247,28 +284,35 @@ class BookingService:
             if locked_booking.status in [BookingStatus.COMPLETED, BookingStatus.CANCELLED_BY_CUSTOMER, BookingStatus.CANCELLED_BY_OWNER]:
                 raise BookingValidationError(f"Cannot cancel booking in '{locked_booking.status}' status.")
 
-            # Calculate Refund based on days to event and cancellation policy
+            # Calculate refund based on the event-time-to-cancel window.
+            # Rules:
+            # - > 90 days out: 90% refund
+            # - 30 to 90 days out: 50% refund
+            # - < 30 days out: 0% refund
+            # - Owner/admin-initiated cancellation: 100% refund immediately
             days_until_event = (locked_booking.event_date - datetime.now().date()).days
             policy = locked_booking.hall.cancellation_policy
 
             refund_pct = Decimal('0.00')
             if is_owner or is_admin:
-                # 100% refund if owner/admin cancels
                 refund_pct = Decimal('100.00')
             else:
-                if policy == CancellationPolicy.FLEXIBLE:
-                    if days_until_event >= 14:
-                        refund_pct = Decimal('100.00')
-                    elif days_until_event >= 7:
-                        refund_pct = Decimal('50.00')
-                elif policy == CancellationPolicy.MODERATE:
-                    if days_until_event >= 30:
-                        refund_pct = Decimal('70.00')
-                    elif days_until_event >= 14:
-                        refund_pct = Decimal('30.00')
-                else: # STRICT
-                    if days_until_event >= 30:
-                        refund_pct = Decimal('50.00')
+                if days_until_event > 90:
+                    refund_pct = Decimal('90.00')
+                elif days_until_event >= 30:
+                    refund_pct = Decimal('50.00')
+                else:
+                    refund_pct = Decimal('0.00')
+
+                # Preserve hall-specific policy values if a venue chooses a tighter policy.
+                if policy == CancellationPolicy.FLEXIBLE and days_until_event > 90:
+                    refund_pct = Decimal('90.00')
+                elif policy == CancellationPolicy.MODERATE and days_until_event >= 30:
+                    refund_pct = Decimal('50.00')
+                elif policy == CancellationPolicy.STRICT and days_until_event >= 30:
+                    refund_pct = Decimal('50.00')
+                elif policy == CancellationPolicy.STRICT and days_until_event < 30:
+                    refund_pct = Decimal('0.00')
 
             refund_amount = PricingService.quantize(locked_booking.amount_paid * (refund_pct / Decimal('100.00')))
             cancellation_fee = locked_booking.amount_paid - refund_amount
@@ -295,5 +339,8 @@ class BookingService:
                 obj=locked_booking,
                 changes={"status": target_status, "refund_amount": str(refund_amount)}
             )
+
+            from apps.notifications.services.notification import NotificationService
+            NotificationService.notify_booking_cancelled(locked_booking, actor=actor, reason=reason)
 
             return locked_booking

@@ -114,6 +114,8 @@ class OwnerProfile(UUIDModel, TimeStampedModel):
     bank_account_holder = models.CharField(max_length=150, blank=True, default="")
     bank_account_number = models.CharField(max_length=50, blank=True, default="")
     bank_ifsc_code = models.CharField(max_length=20, blank=True, default="")
+    id_proof = models.FileField(upload_to='owner_kyc/id_proof/%Y/%m/%d/', blank=True, null=True)
+    business_proof = models.FileField(upload_to='owner_kyc/business_proof/%Y/%m/%d/', blank=True, null=True)
     verification_status = models.CharField(
         max_length=20,
         choices=OwnerVerificationStatus.choices,
@@ -122,6 +124,7 @@ class OwnerProfile(UUIDModel, TimeStampedModel):
     )
     payout_enabled = models.BooleanField(default=False)
     notes = models.TextField(blank=True, default="")
+    verification_notes = models.TextField(blank=True, default="")
 
     class Meta:
         db_table = 'owner_profiles'
@@ -180,6 +183,77 @@ class EmailVerificationToken(UUIDModel, TimeStampedModel):
     @property
     def is_valid(self):
         return not self.is_used and self.expires_at > datetime.now(timezone.utc)
+
+
+class EmailVerificationOTP(UUIDModel, TimeStampedModel):
+    """
+    Stores a short-lived OTP used to verify a user's email address.
+    """
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="email_verification_otps",
+    )
+
+    otp = models.CharField(
+        max_length=6,
+        db_index=True,
+    )
+
+    expires_at = models.DateTimeField(
+        db_index=True,
+    )
+
+    is_used = models.BooleanField(
+        default=False,
+    )
+
+    attempts = models.PositiveIntegerField(
+        default=0,
+    )
+
+    class Meta:
+        db_table = "email_verification_otps"
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(
+                fields=["user", "is_used", "expires_at"]
+            ),
+        ]
+
+    @classmethod
+    def generate_for_user(cls, user, ttl_minutes=10):
+        """
+        Invalidates previous unused OTPs and creates a new 6-digit OTP.
+        """
+
+        cls.objects.filter(
+            user=user,
+            is_used=False,
+        ).update(
+            is_used=True,
+        )
+
+        otp = f"{secrets.randbelow(1000000):06d}"
+
+        expires_at = (
+            datetime.now(timezone.utc)
+            + timedelta(minutes=ttl_minutes)
+        )
+
+        return cls.objects.create(
+            user=user,
+            otp=otp,
+            expires_at=expires_at,
+        )
+
+    @property
+    def is_valid(self):
+        return (
+            not self.is_used
+            and self.expires_at > datetime.now(timezone.utc)
+        )
 
 
 class RevokedRefreshToken(UUIDModel, TimeStampedModel):

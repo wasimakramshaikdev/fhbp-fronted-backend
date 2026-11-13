@@ -33,9 +33,9 @@ class CateringPolicy(models.TextChoices):
 
 
 class CancellationPolicy(models.TextChoices):
-    FLEXIBLE = 'FLEXIBLE', 'Flexible (Full refund up to 14 days before)'
-    MODERATE = 'MODERATE', 'Moderate (70% refund up to 30 days before)'
-    STRICT = 'STRICT', 'Strict (50% refund up to 30 days before)'
+    FLEXIBLE = 'FLEXIBLE', 'Tier 1: > 90 days out (95% refund minus 5% fee)'
+    MODERATE = 'MODERATE', 'Tier 2: 30 to 90 days out (50% refund)'
+    STRICT = 'STRICT', 'Tier 3: < 30 days out (0% refund)'
 
 
 class Amenity(UUIDModel, TimeStampedModel):

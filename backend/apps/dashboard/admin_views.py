@@ -43,6 +43,35 @@ class AdminDashboardOverviewView(APIView):
             created_at__month=current_month
         ).aggregate(Sum('commission_amount'))['commission_amount__sum'] or Decimal('0.00')
 
+        # Refunded bookings and total refund amount this month
+        refunded_bookings_qs = Booking.objects.filter(status=BookingStatus.REFUNDED).select_related('hall', 'customer').order_by('-updated_at')
+        refunds_this_month = refunded_bookings_qs.filter(
+            updated_at__year=current_year,
+            updated_at__month=current_month,
+        )
+        refund_amount_mtd = refunds_this_month.aggregate(Sum('refund_amount'))['refund_amount__sum'] or Decimal('0.00')
+        total_refunded_bookings = refunded_bookings_qs.count()
+
+        refund_due_qs = Booking.objects.filter(
+            status=BookingStatus.CANCELLED_BY_CUSTOMER,
+            refund_amount__gt=0,
+        ).select_related('hall', 'customer').order_by('-updated_at')
+        refunds_due_count = refund_due_qs.count()
+        refunds_due_amount = refund_due_qs.aggregate(Sum('refund_amount'))['refund_amount__sum'] or Decimal('0.00')
+
+        refunded_bookings = [{
+            "id": str(b.id),
+            "booking_number": b.booking_number,
+            "hall_name": b.hall.name,
+            "customer_name": b.contact_name or b.customer.full_name,
+            "customer_email": b.customer.email,
+            "refund_amount": float(b.refund_amount),
+            "amount_paid": float(b.amount_paid),
+            "event_date": b.event_date.isoformat(),
+            "status": b.status,
+            "refunded_at": b.updated_at.isoformat(),
+        } for b in refunded_bookings_qs[:20]]
+
         # Pending Approvals List (Wireframe Admin Screen 1)
         pending_halls = Hall.objects.filter(
             approval_status=HallApprovalStatus.UNDER_REVIEW
@@ -72,10 +101,16 @@ class AdminDashboardOverviewView(APIView):
                 "active_owners": active_owners,
                 "bookings_this_month": bookings_mtd_count,
                 "commission_revenue_mtd": float(commission_mtd),
+                "refunds_this_month": refunds_this_month.count(),
+                "refund_amount_mtd": float(refund_amount_mtd),
+                "total_refunded_bookings": total_refunded_bookings,
+                "refunds_due_count": refunds_due_count,
+                "refunds_due_amount": float(refunds_due_amount),
                 "pending_approvals_count": pending_halls.count(),
                 "open_disputes_count": open_disputes_count,
             },
             "pending_approvals": pending_data,
+            "refunded_bookings": refunded_bookings,
         })
 
 
@@ -113,6 +148,8 @@ class AdminOwnerListView(APIView):
         data = []
         for user in page:
             profile = getattr(user, 'owner_profile', None)
+            id_proof_url = request.build_absolute_uri(profile.id_proof.url) if profile and profile.id_proof else None
+            business_proof_url = request.build_absolute_uri(profile.business_proof.url) if profile and profile.business_proof else None
             data.append({
                 "id": str(user.id),
                 "full_name": user.full_name,
@@ -125,6 +162,8 @@ class AdminOwnerListView(APIView):
                 "is_active": user.is_active,
                 "verification_status": profile.verification_status if profile else "PENDING",
                 "joined_at": user.created_at.isoformat(),
+                "id_proof_url": id_proof_url,
+                "business_proof_url": business_proof_url,
             })
 
         return paginator.get_paginated_response(data)
@@ -132,7 +171,7 @@ class AdminOwnerListView(APIView):
 
 class AdminOwnerActionView(APIView):
     """
-    Super Admin actions on venue owners: APPROVE, SUSPEND, REACTIVATE.
+    Super Admin actions on venue owners: APPROVE, REJECT, SUSPEND, REACTIVATE.
     """
     permission_classes = [IsAuthenticated, IsAdminRole]
 
@@ -154,14 +193,25 @@ class AdminOwnerActionView(APIView):
             AuditService.log_action(actor=request.user, action="ADMIN_VERIFIED_OWNER", obj=user)
             return api_response(message=f"Owner '{user.full_name}' has been verified.")
 
+        elif action == 'REJECT':
+            if profile:
+                profile.verification_status = OwnerVerificationStatus.REJECTED
+                profile.payout_enabled = False
+                profile.notes = request.data.get('notes') or 'Owner verification rejected by admin.'
+                profile.save()
+            user.is_active = True
+            user.save()
+            AuditService.log_action(actor=request.user, action="ADMIN_REJECTED_OWNER", obj=user)
+            return api_response(message=f"Owner '{user.full_name}' verification rejected.")
+
         elif action == 'SUSPEND':
             if profile:
                 profile.verification_status = OwnerVerificationStatus.SUSPENDED
                 profile.payout_enabled = False
+                profile.notes = request.data.get('notes') or 'Owner account suspended by admin.'
                 profile.save()
             user.is_active = False
             user.save()
-            # Deactivate all owner halls
             Hall.objects.filter(owner=user).update(status=HallStatus.INACTIVE)
             AuditService.log_action(actor=request.user, action="ADMIN_SUSPENDED_OWNER", obj=user)
             return api_response(message=f"Owner '{user.full_name}' and all associated listings suspended.")
@@ -170,6 +220,7 @@ class AdminOwnerActionView(APIView):
             if profile:
                 profile.verification_status = OwnerVerificationStatus.VERIFIED
                 profile.payout_enabled = True
+                profile.notes = request.data.get('notes') or 'Owner reactivated by admin.'
                 profile.save()
             user.is_active = True
             user.save()

@@ -104,6 +104,8 @@ export const OwnerOnboardingWizard = () => {
   };
 
   const handleSubmitListing = async () => {
+    if (loading) return;
+
     setLoading(true);
     try {
       // 1. Create Draft Hall
@@ -137,7 +139,7 @@ export const OwnerOnboardingWizard = () => {
         </div>
         <h1 className="text-3xl font-extrabold text-slate-900">List Your Function Hall</h1>
         <p className="text-sm text-slate-500">
-          Complete the 4-step listing process to publish your venue on HallBook
+          Complete the 4-step listing process to publish your venue on PotlaEventSpaces
         </p>
       </div>
 
@@ -497,7 +499,7 @@ export const OwnerOnboardingWizard = () => {
             <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-xl text-xs text-indigo-900 leading-relaxed flex gap-3">
               <AlertCircle className="w-5 h-5 text-indigo-600 shrink-0 mt-0.5" />
               <span>
-                By submitting this listing, you agree to the HallBook Host Terms. Our verification team will review your photos, capacity guidelines, and locality within 24 hours before making the venue live for customer reservations.
+                By submitting this listing, you agree to the PotlaEventSpaces Host Terms. Our verification team will review your photos, capacity guidelines, and locality within 24 hours before making the venue live for customer reservations.
               </span>
             </div>
           </CardBody>

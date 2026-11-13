@@ -202,11 +202,19 @@ class PaymentService:
         with transaction.atomic():
             payment = Payment.objects.select_for_update().get(id=payment_id)
             refund_amount = amount or payment.amount
+            refund_amount = refund_amount.quantize(Decimal('0.01')) if isinstance(refund_amount, Decimal) else Decimal(str(refund_amount)).quantize(Decimal('0.01'))
+
+            if payment.status == PaymentStatus.REFUNDED and payment.refunds.exists():
+                existing_refund = payment.refunds.order_by('-created_at').first()
+                return existing_refund
+
+            if refund_amount <= Decimal('0.00'):
+                raise PaymentProcessingError("Refund amount must be greater than zero.")
 
             gateway_resp = gateway.process_refund(
                 payment_id=payment.gateway_payment_id or "sim_pay",
                 amount=refund_amount,
-                reason=reason
+                reason=reason,
             )
 
             refund = Refund.objects.create(
@@ -218,14 +226,14 @@ class PaymentService:
                 status=PaymentStatus.SUCCESS,
                 initiated_by=actor,
                 gateway_refund_id=gateway_resp.get("gateway_refund_id", ""),
-                gateway_response_payload=gateway_resp
+                gateway_response_payload=gateway_resp,
             )
 
             payment.status = PaymentStatus.REFUNDED
             payment.save()
 
             booking = payment.booking
-            booking.refund_amount += refund_amount
+            booking.refund_amount = max(booking.refund_amount, refund_amount)
             booking.status = BookingStatus.REFUNDED
             booking.save()
 
@@ -233,7 +241,12 @@ class PaymentService:
                 actor=actor,
                 action="REFUND_PROCESSED",
                 obj=refund,
-                changes={"amount": str(refund_amount), "reason": reason}
+                changes={"amount": str(refund_amount), "reason": reason},
             )
+
+            try:
+                NotificationService.notify_refund_processed(booking, refund, actor=actor)
+            except Exception as e:
+                logger.warning(f"Failed to dispatch refund notification for booking {booking.id}: {e}")
 
             return refund

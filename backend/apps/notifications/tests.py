@@ -90,6 +90,95 @@ class NotificationAndCeleryTests(TestCase):
         count_after = self.client.get('/api/v1/notifications/unread-count/')
         self.assertEqual(count_after.data['data']['unread_count'], 0)
 
+    def test_cancelled_booking_sends_notifications_to_customer_and_owner(self):
+        booking = Booking.objects.create(
+            customer=self.customer,
+            hall=self.hall,
+            event_type=EventType.WEDDING,
+            event_date=date.today() + timedelta(days=20),
+            time_slot=TimeSlot.EVENING,
+            guest_count=200,
+            contact_name="Divya Rao",
+            contact_phone="+919876542222",
+            hall_rent=45000,
+            subtotal=45000,
+            tax_amount=8100,
+            total_amount=53100,
+            advance_amount=10620,
+            balance_amount=42480,
+            amount_paid=10620,
+            status=BookingStatus.CONFIRMED
+        )
+
+        BookingService.cancel_booking(booking, self.customer, reason="Plans changed")
+
+        self.assertTrue(Notification.objects.filter(
+            user=self.customer,
+            type=NotificationType.BOOKING_CANCELLED,
+            related_entity_id=str(booking.id)
+        ).exists())
+        self.assertTrue(Notification.objects.filter(
+            user=self.owner,
+            type=NotificationType.BOOKING_CANCELLED,
+            related_entity_id=str(booking.id)
+        ).exists())
+
+    def test_refund_processed_sends_notifications_to_customer_and_owner(self):
+        booking = Booking.objects.create(
+            customer=self.customer,
+            hall=self.hall,
+            event_type=EventType.WEDDING,
+            event_date=date.today() + timedelta(days=30),
+            time_slot=TimeSlot.EVENING,
+            guest_count=200,
+            contact_name="Divya Rao",
+            contact_phone="+919876542222",
+            hall_rent=45000,
+            subtotal=45000,
+            tax_amount=8100,
+            total_amount=53100,
+            advance_amount=10620,
+            balance_amount=42480,
+            amount_paid=10620,
+            status=BookingStatus.CONFIRMED
+        )
+        payment = booking.payments.create(
+            payment_reference='PAY-REFUND-TEST',
+            idempotency_key='refund-test-key',
+            amount=Decimal('10620.00'),
+            currency='INR',
+            payment_type='ADVANCE',
+            payment_method='UPI',
+            status='SUCCESS',
+            gateway='SIMULATED',
+            gateway_order_id='order_refund_test',
+            paid_at=datetime.now(timezone.utc),
+        )
+
+        refund = payment.refunds.create(
+            booking=booking,
+            amount=Decimal('10620.00'),
+            currency='INR',
+            reason='Customer cancellation refund',
+            status='SUCCESS',
+            initiated_by=self.owner,
+            gateway_refund_id='refund_test_123',
+            gateway_response_payload={'status': 'success'}
+        )
+
+        NotificationService.notify_refund_processed(booking, refund, actor=self.owner)
+
+        self.assertTrue(Notification.objects.filter(
+            user=self.customer,
+            type=NotificationType.REFUND_PROCESSED,
+            related_entity_id=str(refund.id)
+        ).exists())
+        self.assertTrue(Notification.objects.filter(
+            user=self.owner,
+            type=NotificationType.REFUND_PROCESSED,
+            related_entity_id=str(refund.id)
+        ).exists())
+
     def test_email_task_execution(self):
         result = send_email_notification_task(
             recipient_email="test@example.com",

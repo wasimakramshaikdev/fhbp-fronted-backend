@@ -55,7 +55,14 @@ export const LoginPage = () => {
       }
     } catch (err) {
       console.warn('[AUTH DEBUG] login error:', err);
-      setErrorMsg(err.message || 'Invalid email or password. Please try again.');
+      const payload = err?.response?.data || err || {};
+      const message =
+        payload?.message ||
+        payload?.detail ||
+        payload?.error ||
+        err?.message ||
+        'Invalid email or password. Please try again.';
+      setErrorMsg(message);
     } finally {
       setLoading(false);
     }
@@ -68,7 +75,7 @@ export const LoginPage = () => {
           <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center text-white mx-auto shadow-lg shadow-indigo-600/20">
             <Building2 className="w-7 h-7" />
           </div>
-          <h1 className="text-2xl font-black tracking-tight text-slate-900">Sign in to HallBook</h1>
+          <h1 className="text-2xl font-black tracking-tight text-slate-900">Sign in to PotlaEventSpaces</h1>
           <p className="text-sm text-slate-500">
             {redirectUrl ? 'Sign in to complete your venue reservation' : 'Manage bookings, view verified venues, or administer listings'}
           </p>

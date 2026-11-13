@@ -112,63 +112,65 @@ export const SearchPage = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
       {/* Top Search Bar */}
-      <div className="bg-white p-5 rounded-3xl border border-slate-200 shadow-xs">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1">
-              <Search className="w-3.5 h-3.5 text-indigo-600" /> Search Keyword
-            </label>
-            <input
-              type="text"
-              placeholder="Search hall name or area..."
-              value={q}
-              onChange={(e) => updateParam('q', e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-900 focus:border-indigo-600 focus:outline-none"
-            />
-          </div>
+      <div className="overflow-hidden rounded-[28px] border border-white/60 bg-gradient-to-r from-slate-950 via-indigo-950 to-slate-900 p-[1px] shadow-[0_18px_50px_rgba(15,23,42,0.16)]">
+        <div className="rounded-[27px] bg-white/95 p-5 backdrop-blur-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1">
+                <Search className="w-3.5 h-3.5 text-indigo-600" /> Search Keyword
+              </label>
+              <input
+                type="text"
+                placeholder="Search hall name or area..."
+                value={q}
+                onChange={(e) => updateParam('q', e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-900 focus:border-indigo-600 focus:outline-none shadow-inner"
+              />
+            </div>
 
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1">
-              <MapPin className="w-3.5 h-3.5 text-indigo-600" /> Locality
-            </label>
-            <select
-              value={locality}
-              onChange={(e) => updateParam('locality', e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-600 focus:outline-none"
-            >
-              <option value="">All Hyderabad Localities</option>
-              <option value="Madhapur">Madhapur</option>
-              <option value="Gachibowli">Gachibowli</option>
-              <option value="Kondapur">Kondapur</option>
-              <option value="Banjara Hills">Banjara Hills</option>
-              <option value="Jubilee Hills">Jubilee Hills</option>
-              <option value="Kukatpally">Kukatpally</option>
-              <option value="Hitech City">Hitech City</option>
-            </select>
-          </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5 text-indigo-600" /> Locality
+              </label>
+              <select
+                value={locality}
+                onChange={(e) => updateParam('locality', e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2.5 text-sm text-slate-900 focus:border-indigo-600 focus:outline-none shadow-inner"
+              >
+                <option value="">All Hyderabad Localities</option>
+                <option value="Madhapur">Madhapur</option>
+                <option value="Gachibowli">Gachibowli</option>
+                <option value="Kondapur">Kondapur</option>
+                <option value="Banjara Hills">Banjara Hills</option>
+                <option value="Jubilee Hills">Jubilee Hills</option>
+                <option value="Kukatpally">Kukatpally</option>
+                <option value="Hitech City">Hitech City</option>
+              </select>
+            </div>
 
-          <div>
-            <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1">
-              <Users className="w-3.5 h-3.5 text-indigo-600" /> Expected Guests
-            </label>
-            <input
-              type="number"
-              placeholder="e.g. 350"
-              value={guests}
-              onChange={(e) => updateParam('guests', e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-900 focus:border-indigo-600 focus:outline-none"
-            />
-          </div>
+            <div>
+              <label className="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-1.5 flex items-center gap-1">
+                <Users className="w-3.5 h-3.5 text-indigo-600" /> Expected Guests
+              </label>
+              <input
+                type="number"
+                placeholder="e.g. 350"
+                value={guests}
+                onChange={(e) => updateParam('guests', e.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-900 focus:border-indigo-600 focus:outline-none shadow-inner"
+              />
+            </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={handleClearFilters}
-              icon={RotateCcw}
-            >
-              Reset Filters
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={handleClearFilters}
+                icon={RotateCcw}
+              >
+                Reset Filters
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -177,7 +179,7 @@ export const SearchPage = () => {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
         {/* Left Filter Sidebar */}
         <aside className="lg:col-span-1 space-y-6">
-          <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-6">
+          <div className="rounded-[28px] border border-slate-200 bg-white/90 p-6 shadow-[0_12px_30px_rgba(15,23,42,0.06)] backdrop-blur-sm space-y-6">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                 <SlidersHorizontal className="w-4 h-4 text-indigo-600" /> Filters
@@ -277,7 +279,7 @@ export const SearchPage = () => {
         {/* Right 3 Cols: Header Controls + Hall Cards / Map View */}
         <div className="lg:col-span-3 space-y-6">
           {/* Header Bar */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-4 rounded-2xl border border-slate-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 rounded-2xl border border-slate-200 bg-white/90 p-4 shadow-[0_10px_20px_rgba(15,23,42,0.04)] backdrop-blur-sm">
             <div>
               <h2 className="text-base font-bold text-slate-900">
                 {locality ? `Function Halls in ${locality}` : 'All Verified Venues in Hyderabad'}
@@ -346,7 +348,7 @@ export const SearchPage = () => {
           ) : viewMode === 'grid' ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {halls.map((hall) => (
-                <Card key={hall.id} className="group hover:shadow-xl transition-all duration-300 border-slate-200">
+                <Card key={hall.id} className="group overflow-hidden border-slate-200 shadow-[0_12px_24px_rgba(15,23,42,0.06)] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(79,70,229,0.14)]">
                   <div className="relative aspect-video overflow-hidden bg-slate-100">
                     <img
                       src={hall.primary_image || "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=800&q=80"}

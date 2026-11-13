@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Building2, ShieldCheck, Phone, Mail, MapPin } from 'lucide-react';
+import logoImage from '../../assets/logo.jpeg';
 
 export const Footer = () => {
   return (
@@ -10,12 +11,19 @@ export const Footer = () => {
           {/* Brand Col */}
           <div className="space-y-4 md:col-span-1">
             <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl bg-indigo-600 flex items-center justify-center text-white">
-                <Building2 className="w-5 h-5" />
+              <img
+                src={logoImage}
+                alt="PotlaEventSpaces logo"
+                className="h-9 w-9 rounded-full object-cover ring-2 ring-fuchsia-500/30"
+              />
+              <div className="flex flex-col leading-none">
+                <span className="text-[0.6rem] font-semibold tracking-[0.22em] text-slate-400 uppercase">
+                  Potla
+                </span>
+                <span className="text-lg font-black tracking-[-0.04em] text-white">
+                  Event<span className="text-indigo-400">Spaces</span>
+                </span>
               </div>
-              <span className="text-xl font-black tracking-tight text-white">
-                HALL<span className="text-indigo-500">BOOK</span>
-              </span>
             </div>
             <p className="text-sm text-slate-400 leading-relaxed">
               India's trusted marketplace for booking banquet halls, convention centers, and wedding lawns with real-time availability and guaranteed slot holds.
@@ -37,17 +45,6 @@ export const Footer = () => {
             </ul>
           </div>
 
-          {/* For Hall Owners */}
-          <div className="space-y-3">
-            <h4 className="text-sm font-semibold uppercase tracking-wider text-white">For Venue Owners</h4>
-            <ul className="space-y-2 text-sm">
-              <li><Link to="/owner/onboarding" className="hover:text-white transition">List Your Venue</Link></li>
-              <li><Link to="/owner/earnings" className="hover:text-white transition">Owner Earnings & Commission</Link></li>
-              <li><Link to="/owner/calendar" className="hover:text-white transition">Real-time Slot Manager</Link></li>
-              <li><Link to="/how-it-works" className="hover:text-white transition">Partner Guidelines</Link></li>
-            </ul>
-          </div>
-
           {/* Contact & Support */}
           <div className="space-y-3">
             <h4 className="text-sm font-semibold uppercase tracking-wider text-white">Support & Contact</h4>
@@ -62,7 +59,7 @@ export const Footer = () => {
               </div>
               <div className="flex items-center gap-2.5">
                 <Mail className="w-4 h-4 text-indigo-400 shrink-0" />
-                <span>support@hallbook.in</span>
+                <span>support@potlaeventspaces.com</span>
               </div>
             </div>
           </div>
@@ -70,7 +67,7 @@ export const Footer = () => {
 
         {/* Bottom Bar */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
-          <p>© 2026 HallBook Technologies India Pvt Ltd. All rights reserved.</p>
+          <p>© 2026 PotlaEventSpaces Technologies India Pvt Ltd. All rights reserved.</p>
           <div className="flex gap-6">
             <Link to="/privacy" className="hover:text-slate-400">Privacy Policy</Link>
             <Link to="/terms" className="hover:text-slate-400">Terms of Service</Link>

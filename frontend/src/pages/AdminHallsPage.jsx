@@ -87,17 +87,17 @@ export const AdminHallsPage = () => {
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-white">Function Hall Approval Queue</h1>
-          <p className="text-sm text-slate-400 mt-1">Review owner submissions, inspect capacity & policies, and approve marketplace listings</p>
+          <h1 className="text-2xl font-bold text-slate-900">Function Hall Approval Queue</h1>
+          <p className="text-sm text-slate-500 mt-1">Review owner submissions, inspect capacity & policies, and approve marketplace listings</p>
         </div>
 
         {/* Filter */}
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-slate-400" />
+          <Filter className="w-4 h-4 text-slate-500" />
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value)}
-            className="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-xs font-semibold text-white focus:outline-none"
+            className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none"
           >
             <option value="">All Listings</option>
             <option value="UNDER_REVIEW">Pending Review</option>
@@ -119,16 +119,16 @@ export const AdminHallsPage = () => {
           description="There are currently no listings matching this filter."
         />
       ) : (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-[0_10px_25px_rgba(15,23,42,0.04)]">
           <Table>
             <TableHead>
-              <TableRow className="border-slate-800 bg-slate-800/60">
-                <TableHeaderCell className="text-slate-300">Hall Name & Locality</TableHeaderCell>
-                <TableHeaderCell className="text-slate-300">Owner & Business</TableHeaderCell>
-                <TableHeaderCell className="text-slate-300">Capacity & Type</TableHeaderCell>
-                <TableHeaderCell className="text-slate-300">Pricing (Evening)</TableHeaderCell>
-                <TableHeaderCell className="text-slate-300">Approval State</TableHeaderCell>
-                <TableHeaderCell className="text-slate-300 text-right">Actions</TableHeaderCell>
+              <TableRow className="border-slate-200 bg-slate-50">
+                <TableHeaderCell className="text-slate-600">Hall Name & Locality</TableHeaderCell>
+                <TableHeaderCell className="text-slate-600">Owner & Business</TableHeaderCell>
+                <TableHeaderCell className="text-slate-600">Capacity & Type</TableHeaderCell>
+                <TableHeaderCell className="text-slate-600">Pricing (Evening)</TableHeaderCell>
+                <TableHeaderCell className="text-slate-600">Approval State</TableHeaderCell>
+                <TableHeaderCell className="text-slate-600 text-right">Actions</TableHeaderCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -138,21 +138,21 @@ export const AdminHallsPage = () => {
                 const isRejected = hall.approval_status === 'REJECTED';
 
                 return (
-                  <TableRow key={hall.id} className="border-slate-800 hover:bg-slate-800/40">
+                  <TableRow key={hall.id} className="border-slate-200 hover:bg-slate-50">
                     <TableCell>
-                      <div className="font-bold text-white text-sm">{hall.name}</div>
-                      <div className="text-xs text-slate-400">{hall.locality}, {hall.city}</div>
+                      <div className="font-bold text-slate-900 text-sm">{hall.name}</div>
+                      <div className="text-xs text-slate-500">{hall.locality}, {hall.city}</div>
                     </TableCell>
                     <TableCell>
-                      <div className="text-sm font-medium text-slate-200">{hall.owner_business || hall.owner_name}</div>
-                      <div className="text-xs text-slate-400">{hall.owner_phone || 'No phone'}</div>
+                      <div className="text-sm font-medium text-slate-700">{hall.owner_business || hall.owner_name}</div>
+                      <div className="text-xs text-slate-500">{hall.owner_phone || 'No phone'}</div>
                     </TableCell>
                     <TableCell>
-                      <div className="text-xs text-slate-300">{hall.min_capacity} - {hall.max_capacity} Guests</div>
+                      <div className="text-xs text-slate-600">{hall.min_capacity} - {hall.max_capacity} Guests</div>
                       <Badge variant="primary" size="sm">{hall.hall_type}</Badge>
                     </TableCell>
                     <TableCell>
-                      <div className="text-sm font-bold text-slate-200">{formatCurrency(hall.base_price_evening)}</div>
+                      <div className="text-sm font-bold text-slate-900">{formatCurrency(hall.base_price_evening)}</div>
                       <div className="text-[11px] text-slate-500">{hall.advance_percentage}% advance</div>
                     </TableCell>
                     <TableCell>

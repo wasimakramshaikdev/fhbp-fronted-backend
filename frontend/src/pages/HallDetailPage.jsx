@@ -11,6 +11,26 @@ import { Spinner, EmptyState } from '../components/ui/Feedback';
 import { PriceBreakdown } from '../components/ui/PriceBreakdown';
 import { formatCurrency } from '../utils/formatters';
 
+
+const getLocalISODate = (date) => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+};
+
+const getTodayLocalDate = () => {
+  const date = new Date();
+  return getLocalISODate(date);
+};
+
+const getMinBookingDate = () => {
+  const date = new Date();
+  date.setDate(date.getDate() + 1);
+  return getLocalISODate(date);
+};
+
 export const HallDetailPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
@@ -20,9 +40,13 @@ export const HallDetailPage = () => {
   const [hall, setHall] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
+  const [isSaved, setIsSaved] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState(false);
+  const [guestError, setGuestError] = useState('');
+  const [eventDateError, setEventDateError] = useState('');
 
   // Booking Widget State
-  const [eventDate, setEventDate] = useState('2026-08-15');
+  const [eventDate, setEventDate] = useState(getMinBookingDate());
   const [guestCount, setGuestCount] = useState(300);
   const [timeSlot, setTimeSlot] = useState('EVENING');
   const [hasCatering, setHasCatering] = useState(true);
@@ -49,6 +73,30 @@ export const HallDetailPage = () => {
     };
     fetchHallDetail();
   }, [slug]);
+
+  useEffect(() => {
+    const fetchSavedStatus = async () => {
+      if (!user || !hall?.id) return;
+
+      try {
+        const res = await api.get('/favorites/');
+        if (res.success) {
+          const favoriteList = Array.isArray(res.data)
+            ? res.data
+            : Array.isArray(res.data?.data)
+              ? res.data.data
+              : Array.isArray(res.data?.results)
+                ? res.data.results
+                : [];
+          setIsSaved(favoriteList.some((fav) => fav.hall?.id === hall.id || fav.hall_id === hall.id));
+        }
+      } catch (err) {
+        setIsSaved(false);
+      }
+    };
+
+    fetchSavedStatus();
+  }, [user, hall?.id]);
 
   if (loading) {
     return (
@@ -93,11 +141,61 @@ export const HallDetailPage = () => {
     ? hall.images
     : [{ image_url: "https://images.unsplash.com/photo-1519167758481-83f550bb49b3?auto=format&fit=crop&w=1200&q=80" }];
 
+  const handleToggleFavorite = async () => {
+    if (!user) {
+      navigate(`/login?redirect=/halls/${slug}`);
+      return;
+    }
+
+    try {
+      setFavoriteLoading(true);
+      const res = await api.post(`/favorites/${hall.id}/toggle/`);
+
+      if (res.success) {
+        const nextSaved = Boolean(res.data?.is_favorited);
+        setIsSaved(nextSaved);
+        showSuccess(res.message || (nextSaved ? `Added '${hall.name}' to saved venues.` : `Removed '${hall.name}' from saved venues.`));
+      } else {
+        showError(res.message || 'Unable to update saved halls right now.');
+      }
+    } catch (err) {
+      const message = err?.message || 'Unable to update saved halls right now.';
+      showError(message);
+    } finally {
+      setFavoriteLoading(false);
+    }
+  };
+
   const handleProceedToCheckout = () => {
     if (!user) {
       navigate(`/login?redirect=/halls/${slug}/book`);
       return;
     }
+
+    const safeGuestCount = Number(guestCount);
+    if (Number.isNaN(safeGuestCount) || safeGuestCount < hall.min_capacity || safeGuestCount > hall.max_capacity) {
+      const nextError = `Guest count must be between ${hall.min_capacity} and ${hall.max_capacity}.`;
+      setGuestError(nextError);
+      showError(nextError);
+      return;
+    }
+    setGuestError('');
+
+    if (!eventDate || eventDate < getTodayLocalDate()) {
+      const nextError = 'Event date cannot be in the past.';
+      setEventDateError(nextError);
+      showError(nextError);
+      return;
+    }
+
+    if (eventDate < getMinBookingDate()) {
+      const nextError = 'Bookings must be made at least 1 day in advance.';
+      setEventDateError(nextError);
+      showError(nextError);
+      return;
+    }
+    setEventDateError('');
+
     // Navigate with booking intent parameters
     navigate(`/halls/${slug}/book`, {
       state: {
@@ -127,33 +225,41 @@ export const HallDetailPage = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-10">
       {/* Header Info */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Badge variant="primary">{hall.hall_type}</Badge>
-            <div className="flex items-center gap-1 text-xs font-bold text-slate-800 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
-              <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
-              <span>{hall.avg_rating > 0 ? hall.avg_rating : "4.8"}</span>
-              <span className="text-slate-400">({hall.review_count > 0 ? hall.review_count : "120"} reviews)</span>
+      <div className="rounded-[30px] border border-slate-200 bg-white/90 p-5 shadow-[0_18px_40px_rgba(15,23,42,0.06)] backdrop-blur-sm">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="primary">{hall.hall_type}</Badge>
+              <div className="flex items-center gap-1 text-xs font-bold text-slate-800 bg-amber-50 px-2.5 py-1 rounded-full border border-amber-200">
+                <Star className="w-3.5 h-3.5 text-amber-500 fill-amber-500" />
+                <span>{hall.avg_rating > 0 ? hall.avg_rating : "4.8"}</span>
+                <span className="text-slate-400">({hall.review_count > 0 ? hall.review_count : "120"} reviews)</span>
+              </div>
             </div>
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">{hall.name}</h1>
+            <p className="text-sm text-slate-500 flex items-center gap-1.5">
+              <MapPin className="w-4 h-4 text-indigo-600" />
+              {hall.address_line1}, {hall.locality}, {hall.city} — {hall.postal_code}
+            </p>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-slate-900 tracking-tight">{hall.name}</h1>
-          <p className="text-sm text-slate-500 flex items-center gap-1.5">
-            <MapPin className="w-4 h-4 text-indigo-600" />
-            {hall.address_line1}, {hall.locality}, {hall.city} — {hall.postal_code}
-          </p>
-        </div>
 
-        <div className="flex items-center gap-3">
-          <Button variant="outline" size="sm" icon={Share2} onClick={() => {
-            navigator.clipboard.writeText(window.location.href);
-            showSuccess('Link copied to clipboard!');
-          }}>
-            Share
-          </Button>
-          <Button variant="outline" size="sm" icon={Heart}>
-            Save
-          </Button>
+          <div className="flex items-center gap-3">
+            <Button variant="outline" size="sm" icon={Share2} onClick={() => {
+              navigator.clipboard.writeText(window.location.href);
+              showSuccess('Link copied to clipboard!');
+            }}>
+              Share
+            </Button>
+            <Button
+              variant={isSaved ? 'primary' : 'outline'}
+              size="sm"
+              icon={Heart}
+              onClick={handleToggleFavorite}
+              disabled={favoriteLoading}
+            >
+              {favoriteLoading ? 'Saving...' : isSaved ? 'Saved' : 'Save'}
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -269,7 +375,7 @@ export const HallDetailPage = () => {
                     <span>"Good venue, parking was managed well"</span>
                     <span className="text-amber-500">⭐ 4.5</span>
                   </div>
-                  <p className="text-xs text-slate-500">Staff was courteous. Booking advance payment via HallBook was seamless.</p>
+                  <p className="text-xs text-slate-500">Staff was courteous. Booking advance payment via PotlaEventSpaces was seamless.</p>
                   <span className="text-[11px] text-slate-400 block">— K. Naidu (Event on 28 Jun 2026)</span>
                 </div>
               </div>
@@ -279,7 +385,7 @@ export const HallDetailPage = () => {
 
         {/* Right 1 Col: Sticky Booking & Availability Calculator */}
         <div className="space-y-6">
-          <div className="sticky top-24 bg-white p-6 rounded-3xl border border-slate-200 shadow-xl space-y-6">
+          <div className="sticky top-24 rounded-[28px] border border-slate-200 bg-white/90 p-6 shadow-[0_20px_44px_rgba(15,23,42,0.08)] backdrop-blur-sm space-y-6">
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div>
                 <span className="text-xs text-slate-400 block">From</span>
@@ -298,9 +404,25 @@ export const HallDetailPage = () => {
                 <input
                   type="date"
                   value={eventDate}
-                  onChange={(e) => setEventDate(e.target.value)}
+                  min={getTodayLocalDate()}
+                  onChange={(e) => {
+                    const nextValue = e.target.value;
+                    setEventDate(nextValue);
+                    setEventDateError(
+                      !nextValue
+                        ? 'Please select an event date.'
+                        : nextValue < getTodayLocalDate()
+                          ? 'Event date cannot be in the past.'
+                          : nextValue < getMinBookingDate()
+                            ? 'Bookings must be made at least 1 day in advance.'
+                            : ''
+                    );
+                  }}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm font-medium text-slate-900 focus:outline-none"
                 />
+                {eventDateError && (
+                  <p className="mt-2 text-xs font-medium text-rose-600">{eventDateError}</p>
+                )}
               </div>
 
               {/* Guest Count */}
@@ -313,9 +435,22 @@ export const HallDetailPage = () => {
                   min={hall.min_capacity}
                   max={hall.max_capacity}
                   value={guestCount}
-                  onChange={(e) => setGuestCount(parseInt(e.target.value) || hall.min_capacity)}
+                  onChange={(e) => {
+                    const nextValue = parseInt(e.target.value, 10);
+                    setGuestCount(Number.isNaN(nextValue) ? hall.min_capacity : nextValue);
+                    setGuestError(
+                      Number.isNaN(nextValue)
+                        ? 'Please enter a valid guest count.'
+                        : nextValue < hall.min_capacity || nextValue > hall.max_capacity
+                          ? `Guest count must be between ${hall.min_capacity} and ${hall.max_capacity}.`
+                          : ''
+                    );
+                  }}
                   className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2.5 text-sm font-medium text-slate-900 focus:outline-none"
                 />
+                {guestError && (
+                  <p className="mt-2 text-xs font-medium text-rose-600">{guestError}</p>
+                )}
               </div>
 
               {/* Time Slot Selector */}

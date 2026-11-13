@@ -80,6 +80,24 @@ export const OwnerBookingsPage = () => {
     }
   };
 
+  const handleProcessRefund = async (booking) => {
+    try {
+      setActionLoading(true);
+      const res = await api.post(`/bookings/${booking.id}/refund/`, {
+        reason: 'Customer cancellation refund processed by venue owner.',
+      });
+
+      if (res.success) {
+        showSuccess(`Refund for booking #${booking.booking_number} has been processed.`);
+        fetchBookings();
+      }
+    } catch (err) {
+      showError(err.message || 'Failed to process refund');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -99,6 +117,9 @@ export const OwnerBookingsPage = () => {
           <option value="COMPLETED">Completed</option>
           <option value="REJECTED">Declined</option>
           <option value="CANCELLED_BY_CUSTOMER">Cancelled by Customer</option>
+          <option value="CANCELLED_BY_OWNER">Cancelled by Owner</option>
+          <option value="CANCELLED_BY_ADMIN">Cancelled by Admin</option>
+          <option value="REFUNDED">Refunded</option>
         </select>
       </div>
 
@@ -128,9 +149,17 @@ export const OwnerBookingsPage = () => {
             <TableBody>
               {bookings.map((b) => {
                 const isPending = b.status === 'PENDING_OWNER_CONFIRMATION';
+                const isRefunded = b.status === 'REFUNDED';
+                const isCancelled = ['CANCELLED_BY_CUSTOMER', 'CANCELLED_BY_OWNER', 'CANCELLED_BY_ADMIN', 'REFUNDED'].includes(b.status);
+                const refundAmount = Number(b.refund_amount || 0);
+                const shouldShowRefundAction =
+                  ['CANCELLED_BY_CUSTOMER', 'CANCELLED_BY_OWNER', 'CANCELLED_BY_ADMIN'].includes(b.status) &&
+                  !isRefunded &&
+                  Number(b.amount_paid || 0) > 0 &&
+                  refundAmount > 0;
 
                 return (
-                  <TableRow key={b.id}>
+                  <TableRow key={b.id} className={isCancelled ? 'bg-rose-50/50' : ''}>
                     <TableCell>
                       <div className="font-bold text-slate-900 text-sm">#{b.booking_number}</div>
                       <div className="text-xs text-slate-500">{b.hall_name}</div>
@@ -148,7 +177,14 @@ export const OwnerBookingsPage = () => {
                       <div className="text-[11px] text-emerald-600 font-semibold">Advance: {formatCurrency(b.advance_amount)}</div>
                     </TableCell>
                     <TableCell>
-                      <BookingStatusBadge status={b.status} />
+                      <div className="flex flex-col items-start gap-2">
+                        <BookingStatusBadge status={b.status} />
+                        {isCancelled && (
+                          <span className={`inline-flex items-center rounded-full px-2 py-1 text-[10px] font-bold ${isRefunded ? 'bg-amber-100 text-amber-800' : 'bg-rose-100 text-rose-700'}`}>
+                            {isRefunded ? `Refund processed: ${formatCurrency(b.refund_amount || b.amount_paid)}` : 'Cancellation recorded'}
+                          </span>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
@@ -176,6 +212,18 @@ export const OwnerBookingsPage = () => {
                               Decline
                             </Button>
                           </>
+                        )}
+
+                        {!isPending && shouldShowRefundAction && (
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            icon={IndianRupee}
+                            onClick={() => handleProcessRefund(b)}
+                            disabled={actionLoading}
+                          >
+                            Process Refund
+                          </Button>
                         )}
                       </div>
                     </TableCell>
